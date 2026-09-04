@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maya Voice Assistant</title>
+    <title>Maya Live Voice AI</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #121212;
-            color: #ffffff;
+            background: #0f172a;
+            color: #f8fafc;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -18,108 +18,119 @@
         }
         .container {
             text-align: center;
-            background: #1e1e1e;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            background: #1e293b;
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             width: 90%;
             max-width: 400px;
         }
-        h2 { margin-bottom: 10px; color: #4CAF50; }
-        p { color: #b0b0b0; font-size: 14px; margin-bottom: 20px; }
+        h2 { color: #38bdf8; margin-bottom: 5px; }
+        p { color: #94a3b8; font-size: 14px; margin-bottom: 30px; }
+        .mic-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+        }
         .mic-btn {
-            background-color: #ff4081;
+            background-color: #3b82f6;
             color: white;
             border: none;
-            width: 80px;
-            height: 80px;
+            width: 90px;
+            height: 90px;
             border-radius: 50%;
-            font-size: 24px;
+            font-size: 32px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(255, 64, 129, 0.4);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
             transition: 0.3s;
+            z-index: 2;
         }
         .mic-btn.active {
-            background-color: #f44336;
-            transform: scale(1.1);
+            background-color: #ef4444;
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.6);
         }
         #status {
-            margin-top: 20px;
             font-weight: bold;
             font-size: 15px;
-            color: #ffeb3b;
+            color: #facc15;
+            min-height: 40px;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Maya Voice Live</h2>
-        <p>Gusa kitufe ili uanze kuongea na AI kwa wakati halisi.</p>
+        <h2>Maya Live AI</h2>
+        <p>Ongea na Maya kwa wakati halisi kupitia sauti.</p>
         
-        <button id="micBtn" class="mic-btn" onclick="toggleListening()">🎤</button>
-        <div id="status">Imesimama. Gusa kuongea.</div>
+        <div class="mic-container">
+            <button id="micBtn" class="mic-btn" onclick="toggleVoiceSession()">🎙️</button>
+        </div>
+        
+        <div id="status">Gusa kitufe kuanza mazungumzo.</div>
     </div>
 
     <script>
-        let isListening = false;
+        let isSessionActive = false;
+        let recognition = null;
         const statusDiv = document.getElementById("status");
         const micBtn = document.getElementById("micBtn");
 
-        // Kutumia Web Speech API iliyopo ndani ya vivinjari vya simu (Inasikia na kujibu bila kukata)
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
+
         if (!SpeechRecognition) {
-            statusDiv.innerText = "Kivinjari chako hakiauni huduma hii ya sauti.";
+            statusDiv.innerText = "Kivinjari chako hakiwezeshi huduma hii ya sauti.";
         } else {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'sw-TZ'; // Unaweza kuweka 'en-US' au 'sw-TZ'
+            recognition = new SpeechRecognition();
+            recognition.lang = 'sw-TZ';
             recognition.continuous = false;
             recognition.interimResults = false;
 
             recognition.onstart = function() {
-                isListening = true;
-                micBtn.classList.add("active");
-                statusDiv.innerText = "Inasikiliza sauti yako...";
+                statusDiv.innerText = "Maya anasikiliza sauti yako...";
             };
 
             recognition.onresult = function(event) {
                 const userSpeech = event.results[0][0].transcript;
                 statusDiv.innerText = "Umesema: \"" + userSpeech + "\"";
                 
-                // Hapa ndipo ujumbe unatumπεwa kwenye AI API yetu (DeepInfra / Llama)
+                // Mfumo unazuia kusikiliza wakati AI anajibu (kama ilivyo kwenye mchoro: Mute/Discard Chunk wakati spika inafanya kazi)
                 sendToAI(userSpeech);
             };
 
             recognition.onerror = function(event) {
-                statusDiv.innerText = "Hitilafu imetokea: " + event.error;
-                stopListeningState();
+                statusDiv.innerText = "Hitilafu: " + event.error;
+                if (isSessionActive) recognition.start();
             };
 
             recognition.onend = function() {
-                stopListeningState();
-            };
-
-            function toggleListening() {
-                if (!isListening) {
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        console.log(e);
-                    }
-                } else {
-                    recognition.stop();
+                if (isSessionActive) {
+                    try { recognition.start(); } catch(e) {}
                 }
             }
+        }
 
-            function stopListeningState() {
-                isListening = false;
+        function toggleVoiceSession() {
+            if (!SpeechRecognition) return;
+            
+            if (!isSessionActive) {
+                isSessionActive = true;
+                micBtn.classList.add("active");
+                try { recognition.start(); } catch(e) {}
+            } else {
+                isSessionActive = false;
                 micBtn.classList.remove("active");
+                try { recognition.stop(); } catch(e) {}
+                window.speechSynthesis.cancel();
+                statusDiv.innerText = "Mzunguko umesimamishwa.";
             }
         }
 
         async function sendToAI(text) {
-            statusDiv.innerText = "Maya anawaza jibu...";
+            statusDiv.innerText = "Maya anawaza...";
             const apiKey = "NNv3FLASzkRSgOTnivuuWyUWmIriGcuQ";
             const apiUrl = "https://api.deepinfra.com/v1/openai/chat/completions";
 
@@ -141,20 +152,27 @@
                     const aiReply = data.choices[0].message.content;
                     statusDiv.innerText = "Maya: " + aiReply;
                     
-                    // Kusoma jibu kwa sauti (Text-to-Speech)
-                    speakText(aiReply);
+                    // Cheza jibu kupitia spika (Speaker Loop)
+                    speakResponse(aiReply);
                 } else {
-                    statusDiv.innerText = "Samahani, sikupata jibu.";
+                    statusDiv.innerText = "Samahani, sikupata jibu sahihi.";
                 }
             } catch (error) {
-                statusDiv.innerText = "Kosa la mtandao limetokea.";
+                statusDiv.innerText = "Tatizo la mtandao limetokea.";
             }
         }
 
-        function speakText(text) {
+        function speakResponse(text) {
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Futa sauti zilizopita
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'sw-TZ'; // Inasoma kwa lugha ya Kiswahili au Kiingereza
+                utterance.lang = 'sw-TZ';
+                
+                utterance.onend = function() {
+                    // Baada ya spika kumaliza kuongea, huruhusu mfumo kusikiliza tena (Loop inarudi juu kwa User)
+                    statusDiv.innerText = "Endelea kuongea, Maya anasikiliza...";
+                };
+
                 window.speechSynthesis.speak(utterance);
             }
         }
